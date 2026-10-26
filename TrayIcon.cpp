@@ -269,7 +269,22 @@ void TrayIcon::OnPopupClick(wxCommandEvent &evt)
 			if( !b_is_pausing
 				 && !timer->hasCapability(DONT_ALLOW_PAUSE) )
 			{
-				Connector::setPause(true);
+				wxMessageDialog dlg(NULL,
+					_("Exiting the UrBackup tray icon pauses backups until the tray icon is started again."),
+					_("Confirm exit"),
+					wxYES_NO | wxCANCEL | wxYES_DEFAULT | wxICON_QUESTION | wxCENTRE);
+				dlg.SetExtendedMessage(_("Choose \"Exit and keep backups running\" to leave backups enabled."));
+				dlg.SetYesNoCancelLabels(_("Exit and keep backups running"), _("Exit and pause backups"), _("Cancel"));
+
+				int answer = dlg.ShowModal();
+				if(answer == wxID_CANCEL)
+				{
+					break;
+				}
+				if(answer == wxID_NO)
+				{
+					Connector::setPause(true);
+				}
 			}
 			wxExit();
 		}break;
@@ -400,18 +415,16 @@ wxMenu* TrayIcon::CreatePopupMenu(void)
 		any_prev=false;
 	}
 	mnu->Append(ID_TI_INFO, _("About...") );
-	if(backup_is_running)
+	if(b_is_pausing)
 	{
-		if(b_is_pausing==false)
+		//Paused can be undone when idle, too
+		mnu->Append(ID_TI_CONTINUE, _("Continue"));
+	}
+	else if(backup_is_running)
+	{
+		if(!timer->hasCapability(DONT_ALLOW_PAUSE))
 		{
-			if(!timer->hasCapability(DONT_ALLOW_PAUSE))
-			{
-				mnu->Append(ID_TI_PAUSE, _("Pause"));
-			}
-		}
-		else
-		{
-			mnu->Append(ID_TI_CONTINUE, _("Continue"));
+			mnu->Append(ID_TI_PAUSE, _("Pause"));
 		}
 	}
 	mnu->Append(ID_TI_STATUS, _("Status"));

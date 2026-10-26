@@ -850,9 +850,11 @@ void MyTimer::Notify()
 		}	
 	}
 
-	if(status.pause && icon_type==ETrayIcon_PROGRESS)
+	if(status.pause)
 	{
+		//Paused is shown in every state, not only while a backup is running
 		icon_type=ETrayIcon_PAUSED;
+		status_text=wxString(_("Backups PAUSED."))+wxT(" ")+status_text;
 	}
 	else if(icon_type==ETrayIcon_PROGRESS && status.pcdone==wxT("-1"))
 	{
@@ -862,6 +864,15 @@ void MyTimer::Notify()
 		&& !status.has_server )
 	{
 		icon_type=ETrayIcon_NO_SERVER;
+	}
+
+	if(status.keeping_awake==1)
+	{
+		status_text+=wxT("\n")+wxString(_("Keeping this PC awake: yes"));
+	}
+	else if(status.keeping_awake==0)
+	{
+		status_text+=wxT("\n")+wxString(_("Keeping this PC awake: no"));
 	}
 
 	b_is_pausing=status.pause;

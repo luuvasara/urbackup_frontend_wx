@@ -109,7 +109,7 @@ namespace
 Status* Status::instance = NULL;
 
 Status::Status(wxWindow* parent, wxLongLong_t follow_only_process_id)
-	: GUIStatus(parent, follow_only_process_id)
+	: GUIStatus(parent, follow_only_process_id), paused(false), keeping_awake(-1)
 {
 	SetIcon(wxIcon(res_path+wxT("backup-ok.")+ico_ext, ico_type));
 
@@ -138,6 +138,58 @@ Status::Status(wxWindow* parent, wxLongLong_t follow_only_process_id)
 }
 
 
+
+void Status::updateStatusFlags()
+{
+	//STATUS DETAIL does not carry the paused state, so ask FSTATUS (the fast variant: plain STATUS answers only every 20-45s)
+	if(!status_flags.init || status_flags.hasError())
+	{
+		status_flags = Connector::initStatus(status_flags.client, true, 60000);
+	}
+
+	if(status_flags.init && status_flags.isAvailable())
+	{
+		paused = status_flags.pause;
+		keeping_awake = status_flags.keeping_awake;
+		status_flags.init = false;
+	}
+
+	if(follow_only_process_id != 0)
+	{
+		return;
+	}
+
+	wxString flags_text;
+	if(paused)
+	{
+		flags_text = _("Backups are PAUSED. Nothing is backed up until you choose \"Continue\" in the tray icon menu.");
+	}
+
+	if(keeping_awake==1)
+	{
+		if(!flags_text.empty()) flags_text += wxT("\n");
+		flags_text += _("Keeping this PC awake: yes");
+	}
+	else if(keeping_awake==0)
+	{
+		if(!flags_text.empty()) flags_text += wxT("\n");
+		flags_text += _("Keeping this PC awake: no");
+	}
+
+	wxFont flags_font = m_staticText36->GetFont();
+	if(paused)
+	{
+		flags_font.SetWeight(wxFONTWEIGHT_BOLD);
+		m_staticText36->SetOwnForegroundColour(*wxRED);
+	}
+	else
+	{
+		flags_font.SetWeight(wxFONTWEIGHT_NORMAL);
+		m_staticText36->SetOwnForegroundColour(wxNullColour);
+	}
+	m_staticText36->SetFont(flags_font);
+	m_staticText36->SetLabel(flags_text);
+}
 
 bool Status::updateStatus(int errcnt)
 {
@@ -169,6 +221,8 @@ bool Status::updateStatus(int errcnt)
 		}
 	}
 	
+
+	updateStatusFlags();
 
 	if(last_status_details == status_details)
 	{
@@ -350,6 +404,11 @@ void Status::OnClose()
 	{
 		connection.client->Destroy();
 		connection.client = NULL;
+	}
+	if (status_flags.client != NULL)
+	{
+		status_flags.client->Destroy();
+		status_flags.client = NULL;
 	}
 	Destroy();
 }
