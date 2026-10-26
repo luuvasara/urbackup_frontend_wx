@@ -917,6 +917,7 @@ void MyTimer::Notify()
 		status_text = with_awake;
 	}
 
+	wxString last_backup_text;
 	if(!status.lastbackupdate.Trim().empty() )
 	{
 		wxLongLong_t lastbackups;
@@ -924,11 +925,7 @@ void MyTimer::Notify()
 		{
 			wxDateTime lastbackup_dt((wxLongLong)(lastbackups*1000));
 
-			if(has_awake_text)
-			{
-				status_text+=wxT("\n");
-			}
-			status_text+=trans_1(_("Last backup on _1_"), lastbackup_dt.Format());
+			last_backup_text=trans_1(_("Last backup on _1_"), lastbackup_dt.Format());
 		}	
 	}
 
@@ -953,6 +950,16 @@ void MyTimer::Notify()
 		&& !status.has_server )
 	{
 		icon_type=ETrayIcon_NO_SERVER;
+	}
+
+	if(!last_backup_text.empty())
+	{
+		wxString sep = has_awake_text ? wxString(wxT("\n")) : wxString();
+		//Windows cuts tray tooltips after 127 characters: rather leave out the last backup time than cut the state
+		if(status_text.length()+sep.length()+last_backup_text.length()<=127)
+		{
+			status_text+=sep+last_backup_text;
+		}
 	}
 
 	b_is_pausing=status.pause;
