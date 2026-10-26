@@ -109,7 +109,8 @@ namespace
 Status* Status::instance = NULL;
 
 Status::Status(wxWindow* parent, wxLongLong_t follow_only_process_id)
-	: GUIStatus(parent, follow_only_process_id), paused(false), keeping_awake(-1)
+	: GUIStatus(parent, follow_only_process_id), paused(false), keeping_awake(-1), prevent_sleep(-1),
+	last_keeping_awake(-2), last_prevent_sleep(-2)
 {
 	SetIcon(wxIcon(res_path+wxT("backup-ok.")+ico_ext, ico_type));
 
@@ -151,6 +152,7 @@ void Status::updateStatusFlags()
 	{
 		paused = status_flags.pause;
 		keeping_awake = status_flags.keeping_awake;
+		prevent_sleep = status_flags.prevent_sleep;
 		status_flags.init = false;
 	}
 
@@ -163,17 +165,6 @@ void Status::updateStatusFlags()
 	if(paused)
 	{
 		flags_text = _("Backups are PAUSED. Nothing is backed up until you choose \"Continue\" in the tray icon menu.");
-	}
-
-	if(keeping_awake==1)
-	{
-		if(!flags_text.empty()) flags_text += wxT("\n");
-		flags_text += _("Keeping this PC awake: yes");
-	}
-	else if(keeping_awake==0)
-	{
-		if(!flags_text.empty()) flags_text += wxT("\n");
-		flags_text += _("Keeping this PC awake: no");
 	}
 
 	wxFont flags_font = m_staticText36->GetFont();
@@ -224,12 +215,16 @@ bool Status::updateStatus(int errcnt)
 
 	updateStatusFlags();
 
-	if(last_status_details == status_details)
+	if(last_status_details == status_details
+		&& last_keeping_awake == keeping_awake
+		&& last_prevent_sleep == prevent_sleep)
 	{
 		return true;
 	}
 
 	last_status_details = status_details;
+	last_keeping_awake = keeping_awake;
+	last_prevent_sleep = prevent_sleep;
 
 	if (!status_details.running_processes.empty())
 	{
@@ -298,7 +293,7 @@ bool Status::updateStatus(int errcnt)
 			status_text += wxT(" ");
 			status_text += getPercentText(s);
 
-			item.m_staticText31->SetLabel(status_text);
+			item.m_staticText31->SetLabel(appendKeepAwakeText(status_text, keeping_awake, prevent_sleep));
 		}
 	}
 	else

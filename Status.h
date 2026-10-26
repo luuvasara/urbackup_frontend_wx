@@ -45,6 +45,9 @@ private:
 	SStatus status_flags;
 	bool paused;
 	int keeping_awake;
+	int prevent_sleep;
+	int last_keeping_awake;
+	int last_prevent_sleep;
 
 	int error_count;
 };

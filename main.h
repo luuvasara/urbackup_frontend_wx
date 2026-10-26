@@ -26,6 +26,8 @@ wxString getStatusText(wxString status);
 
 wxString getPercentText(wxString pcdone);
 
+wxString appendKeepAwakeText(wxString state, int keeping_awake, int prevent_sleep);
+
 class MyApp : public wxApp
 {
   public:

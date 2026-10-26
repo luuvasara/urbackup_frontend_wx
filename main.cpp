@@ -573,6 +573,33 @@ wxString getPercentText(wxString pcdone)
 	return ret;
 }
 
+//Appends the sleep prevention state to a state text, e.g.
+//"Full file backup running. 34% done -- keeping this PC awake"
+wxString appendKeepAwakeText(wxString state, int keeping_awake, int prevent_sleep)
+{
+	wxString awake;
+	if(keeping_awake==1)
+	{
+		awake = _("keeping this PC awake");
+	}
+	else if(keeping_awake==0 && prevent_sleep==0)
+	{
+		awake = _("PC may sleep (sleep prevention off)");
+	}
+
+	if(awake.empty())
+	{
+		return state;
+	}
+
+	state.Trim();
+	if(state.EndsWith(wxT(".")))
+	{
+		state.RemoveLast();
+	}
+	return state + wxT(" ") + wxString(wxUniChar(0x2014)) + wxT(" ") + awake;
+}
+
 namespace
 {
 	wxString getIconName(ETrayIcon selicon)
@@ -827,6 +854,13 @@ void MyTimer::Notify()
 		backup_is_running=true;
 
 	}
+	else if(status.status==wxT("RESTORE_FILES"))
+	{
+		status_text+=getStatusText(status.status)+wxT(" ");
+		status_text+=getPercentText(status.pcdone);
+		icon_type=ETrayIcon_PROGRESS;
+		backup_is_running=false;
+	}
 	else if(status.status==wxT("NO_RECENT"))
 	{	
 		status_text+=wxString(_("No current backup.")) + wxT(" ");
@@ -839,6 +873,14 @@ void MyTimer::Notify()
 		backup_is_running=false;
 	}
 
+	bool has_awake_text = false;
+	if(icon_type==ETrayIcon_PROGRESS || status.keeping_awake==1)
+	{
+		wxString with_awake = appendKeepAwakeText(status_text, status.keeping_awake, status.prevent_sleep);
+		has_awake_text = with_awake!=status_text;
+		status_text = with_awake;
+	}
+
 	if(!status.lastbackupdate.Trim().empty() )
 	{
 		wxLongLong_t lastbackups;
@@ -846,6 +888,10 @@ void MyTimer::Notify()
 		{
 			wxDateTime lastbackup_dt((wxLongLong)(lastbackups*1000));
 
+			if(has_awake_text)
+			{
+				status_text+=wxT("\n");
+			}
 			status_text+=trans_1(_("Last backup on _1_"), lastbackup_dt.Format());
 		}	
 	}
@@ -864,15 +910,6 @@ void MyTimer::Notify()
 		&& !status.has_server )
 	{
 		icon_type=ETrayIcon_NO_SERVER;
-	}
-
-	if(status.keeping_awake==1)
-	{
-		status_text+=wxT("\n")+wxString(_("Keeping this PC awake: yes"));
-	}
-	else if(status.keeping_awake==0)
-	{
-		status_text+=wxT("\n")+wxString(_("Keeping this PC awake: no"));
 	}
 
 	b_is_pausing=status.pause;
