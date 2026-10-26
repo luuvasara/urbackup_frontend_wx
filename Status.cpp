@@ -109,7 +109,7 @@ namespace
 Status* Status::instance = NULL;
 
 Status::Status(wxWindow* parent, wxLongLong_t follow_only_process_id)
-	: GUIStatus(parent, follow_only_process_id), paused(false), keeping_awake(-1), prevent_sleep(-1),
+	: GUIStatus(parent, follow_only_process_id), paused(false), keeping_awake(-1), prevent_sleep(-1), pause_until(0),
 	last_keeping_awake(-2), last_prevent_sleep(-2)
 {
 	SetIcon(wxIcon(res_path+wxT("backup-ok.")+ico_ext, ico_type));
@@ -153,6 +153,7 @@ void Status::updateStatusFlags()
 		paused = status_flags.pause;
 		keeping_awake = status_flags.keeping_awake;
 		prevent_sleep = status_flags.prevent_sleep;
+		pause_until = status_flags.pause_until;
 		status_flags.init = false;
 	}
 
@@ -162,7 +163,11 @@ void Status::updateStatusFlags()
 	}
 
 	wxString flags_text;
-	if(paused)
+	if(paused && pause_until>0)
+	{
+		flags_text = trans_1(_("Backups are PAUSED. They continue automatically at _1_, or choose \"Continue\" in the tray icon menu."), getResumeTimeText(pause_until));
+	}
+	else if(paused)
 	{
 		flags_text = _("Backups are PAUSED. Nothing is backed up until you choose \"Continue\" in the tray icon menu.");
 	}

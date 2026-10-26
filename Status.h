@@ -46,6 +46,7 @@ private:
 	bool paused;
 	int keeping_awake;
 	int prevent_sleep;
+	long long pause_until;
 	int last_keeping_awake;
 	int last_prevent_sleep;
 

@@ -82,6 +82,7 @@ MyTimer *timer = NULL;
 wxString last_status;
 unsigned int incr_update_intervall=2*60*60+10*60;
 bool backup_is_running=false;
+long long pause_timeout_s=-1;
 extern bool b_is_pausing;
 
 #ifndef DD_RELEASE
@@ -600,6 +601,41 @@ wxString appendKeepAwakeText(wxString state, int keeping_awake, int prevent_slee
 	return state + wxT(" ") + wxString(wxUniChar(0x2014)) + wxT(" ") + awake;
 }
 
+//"14:05", "14:05 tomorrow" or "<date> 14:05"
+wxString getResumeTimeText(long long pause_until)
+{
+	if(pause_until<=0)
+	{
+		return wxEmptyString;
+	}
+
+	wxDateTime until_dt((wxLongLong)(pause_until*1000));
+	wxDateTime today = wxDateTime::Today();
+	wxString time_str = until_dt.Format(wxT("%H:%M"));
+
+	if(until_dt.IsSameDate(today))
+	{
+		return time_str;
+	}
+	else if(until_dt.IsSameDate(today + wxDateSpan::Day()))
+	{
+		return trans_1(_("_1_ tomorrow"), time_str);
+	}
+	return until_dt.FormatDate()+wxT(" ")+time_str;
+}
+
+wxString getPauseDurationText(long long seconds)
+{
+	wxString num;
+	if(seconds%3600==0)
+	{
+		num << (seconds/3600);
+		return trans_1(_("_1_ hours"), num);
+	}
+	num << ((seconds+59)/60);
+	return trans_1(_("_1_ minutes"), num);
+}
+
 namespace
 {
 	wxString getIconName(ETrayIcon selicon)
@@ -900,7 +936,14 @@ void MyTimer::Notify()
 	{
 		//Paused is shown in every state, not only while a backup is running
 		icon_type=ETrayIcon_PAUSED;
-		status_text=wxString(_("Backups PAUSED."))+wxT(" ")+status_text;
+		if(status.pause_until>0)
+		{
+			status_text=trans_1(_("Backups PAUSED, resume at _1_."), getResumeTimeText(status.pause_until))+wxT(" ")+status_text;
+		}
+		else
+		{
+			status_text=wxString(_("Backups PAUSED."))+wxT(" ")+status_text;
+		}
 	}
 	else if(icon_type==ETrayIcon_PROGRESS && status.pcdone==wxT("-1"))
 	{
@@ -913,6 +956,7 @@ void MyTimer::Notify()
 	}
 
 	b_is_pausing=status.pause;
+	pause_timeout_s=status.pause_timeout;
 	
 
 	if(icon_type!=last_icon_type || last_status!=status_text || refresh)

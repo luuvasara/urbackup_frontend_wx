@@ -23,6 +23,7 @@
 #include "capa_bits.h"
 #include "Status.h"
 #include "stringtools.h"
+#include "TranslationHelper.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -59,6 +60,7 @@
 extern MyTimer *timer;
 extern bool backup_is_running;
 bool b_is_pausing=false;
+extern long long pause_timeout_s;
 extern MyTimer *timer;
 
 extern wxString res_path;
@@ -269,12 +271,23 @@ void TrayIcon::OnPopupClick(wxCommandEvent &evt)
 			if( !b_is_pausing
 				 && !timer->hasCapability(DONT_ALLOW_PAUSE) )
 			{
+				wxString exit_msg;
+				if(pause_timeout_s>0)
+				{
+					exit_msg = trans_1(_("Exiting the UrBackup tray icon can pause backups. A pause ends automatically after _1_, or when you choose \"Continue\" in the tray icon menu."), getPauseDurationText(pause_timeout_s));
+				}
+				else
+				{
+					exit_msg = _("Exiting the UrBackup tray icon can pause backups. They stay paused until you choose \"Continue\" in the tray icon menu.");
+				}
 				wxMessageDialog dlg(NULL,
-					_("Exiting the UrBackup tray icon pauses backups until the tray icon is started again."),
+					exit_msg,
 					_("Confirm exit"),
 					wxYES_NO | wxCANCEL | wxYES_DEFAULT | wxICON_QUESTION | wxCENTRE);
 				dlg.SetExtendedMessage(_("Choose \"Exit and keep backups running\" to leave backups enabled."));
-				dlg.SetYesNoCancelLabels(_("Exit and keep backups running"), _("Exit and pause backups"), _("Cancel"));
+				dlg.SetYesNoCancelLabels(_("Exit and keep backups running"),
+					pause_timeout_s>0 ? trans_1(_("Exit and pause backups for _1_"), getPauseDurationText(pause_timeout_s)) : wxString(_("Exit and pause backups")),
+					_("Cancel"));
 
 				int answer = dlg.ShowModal();
 				if(answer == wxID_CANCEL)
@@ -424,7 +437,14 @@ wxMenu* TrayIcon::CreatePopupMenu(void)
 	{
 		if(!timer->hasCapability(DONT_ALLOW_PAUSE))
 		{
-			mnu->Append(ID_TI_PAUSE, _("Pause"));
+			if(pause_timeout_s>0)
+			{
+				mnu->Append(ID_TI_PAUSE, trans_1(_("Pause for _1_"), getPauseDurationText(pause_timeout_s)));
+			}
+			else
+			{
+				mnu->Append(ID_TI_PAUSE, _("Pause"));
+			}
 		}
 	}
 	mnu->Append(ID_TI_STATUS, _("Status"));

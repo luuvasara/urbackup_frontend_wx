@@ -28,6 +28,10 @@ wxString getPercentText(wxString pcdone);
 
 wxString appendKeepAwakeText(wxString state, int keeping_awake, int prevent_sleep);
 
+wxString getResumeTimeText(long long pause_until);
+
+wxString getPauseDurationText(long long seconds);
+
 class MyApp : public wxApp
 {
   public:
